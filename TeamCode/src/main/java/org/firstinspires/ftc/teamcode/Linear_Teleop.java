@@ -29,6 +29,7 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -44,8 +45,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackables;
 //vuforia
 
 
-@TeleOp(name="Linear Test Teleop", group="Practice Opmode")
-//@Disabled
+@TeleOp(name="Linear Test Teleop 2", group="Practice Opmode")
+@Disabled
 public class  Linear_Teleop extends LinearOpMode {
 
     // Declare OpMode members.

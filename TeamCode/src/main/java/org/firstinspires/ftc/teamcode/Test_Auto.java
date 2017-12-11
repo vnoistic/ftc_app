@@ -29,12 +29,15 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-@TeleOp(name="Test Autonomous", group="Practice Opmode")
+@Autonomous(name="Test Autonomous", group="Practice Opmode")
+@Disabled
 public class Test_Auto extends OpMode
 {
     // Declare OpMode members.
