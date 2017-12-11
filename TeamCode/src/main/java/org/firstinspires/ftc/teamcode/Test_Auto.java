@@ -105,12 +105,7 @@ public class Test_Auto extends OpMode
 
     @Override
     public void loop() { //Continuous, after play
-        double leftInput = gamepad1.left_stick_y;
-        double rightInput = gamepad1.right_stick_y;
 
-
-        leftDrive.setPower(leftInput);
-        rightDrive.setPower(rightInput);
         // Vuforia ID ---
         RelicRecoveryVuMark vuMark = RelicRecoveryVuMark.from(relicTemplate);
         if (vuMark != RelicRecoveryVuMark.UNKNOWN) {
@@ -118,6 +113,34 @@ public class Test_Auto extends OpMode
 
         }
 
+        // Autonomous ---
+//        if (System.currentTimeMillis() < timeStamp + 1000){
+//            leftDrive.setPower(1);
+//        }
+//        else if (ystem.currentTimeMillis() < timeStamp + 5000){
+//            leftDrive.setPower(0);
+//
+//
+//        }
+//        else if (System.currentTimeMillis() < timeStamp + 6000){
+//            switch(vuMark){
+//                case LEFT:
+//
+//                    break;
+//
+//                case RIGHT:
+//                    break;
+//
+//                case CENTER:
+//                    break;
+//
+//                default:
+//                case UNKNOWN:
+//                    break;
+//
+//            }
+//
+//        }
 
         telemetry.addData("Status", "Runtime: " + runtime.toString());
         telemetry.update();

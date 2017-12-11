@@ -106,6 +106,8 @@ public class Drive_Teleop extends OpMode
         runtime.reset();
     } //Once, after play
 
+
+    private boolean old_gamepad_x;
     @Override
     public void loop() { //Continuous, after play
         // Vuforia ID ---
@@ -115,63 +117,43 @@ public class Drive_Teleop extends OpMode
         }
 
         // Reverse Control --
-        if (gamepad1.left_stick_button){
+        boolean toggle_ctl = gamepad1.x || gamepad2.x;
+        if(toggle_ctl && !old_gamepad_x) {
             forward = !forward;
-            telemetry.addData("reverseControl", "%d", !forward);
+        }
+        old_gamepad_x = toggle_ctl;
+
+        // Drive Train --
+        double leftInput = 0;//Range.clip(gamepad1.left_stick_y + gamepad2.left_stick_y, -1, 1);
+        double rightInput = 0;//Range.clip(gamepad1.right_stick_y + gamepad2.right_stick_y, -1, 1);
+//        if(gamepad1.left_trigger > 0.3) {
+            leftInput = gamepad1.left_stick_y;
+            rightInput = gamepad1.right_stick_y;
+//            telemetry.addData("Override", "Gamepad1 overriding movement");
+//        }
+
+        if (!forward){ // Reverse controls
+            leftInput = -leftInput;
+            rightInput = -rightInput;
         }
 
-        // Change Control Mode --
-        if (gamepad1.right_stick_button){
-            controlMode = (controlMode + 1) % 3; // modes 0-2
-            telemetry.addData("changeControl", "%d", controlMode);
-        }
-
-        // Drive Train ---
-        if (controlMode == 0){ // Tank Mode controls
-            double leftInput = gamepad1.left_stick_y;
-            double rightInput = gamepad1.right_stick_y;
-
-            if (!forward){ // Reverse controls
-                leftInput = -leftInput;
-                rightInput = -rightInput;
-            }
-
-            leftDrive.setPower(leftInput);
-            rightDrive.setPower(rightInput);
-            telemetry.addData("Input", "(tank) left (%.2f), right (%.2f)", leftInput, rightInput);
-        }
-        else{ // Arcade mode
-            // TODO make sure orientation is correct
-
-            double driveInput = gamepad1.right_stick_y;
-            double turnInput = gamepad1.right_stick_x;
-
-            if (controlMode == 2) { // Split arcade mode
-                turnInput = gamepad1.left_stick_x;
-            }
-
-            double leftPower = Range.clip(driveInput + turnInput, -1.0, 1.0) ;
-            double rightPower = Range.clip(driveInput - turnInput, -1.0, 1.0) ;
-
-            leftDrive.setPower(leftPower);
-            rightDrive.setPower(rightPower);
-
-            telemetry.addData("Input", "(arcade) left (%.2f), right (%.2f)", leftPower, rightPower);
-        }
+        leftDrive.setPower(leftInput);
+        rightDrive.setPower(rightInput);
+        telemetry.addData("Input", "(%s) left (%.2f), right (%.2f)", forward ? "fwd" : "rev", leftInput, rightInput);
 
         // Claw ---
-//        if (gamepad1.left_bumper || gamepad2.left_bumper){
-//            clawMotor.setPower(1.00);
-//            telemetry.addData("Motors","Claw intake.");
-//        }
-//        else if (gamepad1.right_bumper || gamepad2.right_bumper){
-//            clawMotor.setPower(-1.00);
-//            telemetry.addData("Motors","Claw outtake.");
-//        }
-//        else{
-//            clawMotor.setPower(0);
-//            telemetry.addData("Motors","Claw inactive.");
-//        }
+        if (gamepad1.left_bumper || gamepad2.left_bumper){
+            clawMotor.setPower(1.00);
+            telemetry.addData("Motors","Claw intake.");
+        }
+        else if (gamepad1.right_bumper || gamepad2.right_bumper){
+            clawMotor.setPower(-1.00);
+            telemetry.addData("Motors","Claw outtake.");
+        }
+        else{
+            clawMotor.setPower(0);
+            telemetry.addData("Motors","Claw inactive.");
+        }
 
         // Show the elapsed game time and wheel power.
         telemetry.addData("Status", "Runtime: " + runtime.toString());

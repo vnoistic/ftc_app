@@ -55,8 +55,8 @@ public class Linear_Auto extends LinearOpMode {
     private DcMotor rightDrive = null;
     private DcMotor clawMotor = null;
 
-    long timeStamp = 0;
-    long timer = 0;
+    private long timeStamp = 0;
+    private long timer = 0;
 
     public static final String TAG = "Vuforia VuMark Sample";
 
