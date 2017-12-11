@@ -97,7 +97,11 @@ public class Drive_Teleop extends OpMode
 
     @Override
     public void init_loop() { //Continuously, after init
-        telemetry.addData("Status","Init looping.");
+        telemetry.addData("1", "   -- Ruse Robotics --");
+        telemetry.addData("2", "Good Luck! Hope things don't break!");
+        telemetry.addData("4", "- Tank mode input, merged from both controllers");
+        telemetry.addData("5", "- Right trigger on 1 to override movement");
+        telemetry.addData("6", "- X to toggle direction");
     }
 
     @Override
