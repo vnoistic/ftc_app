@@ -29,15 +29,21 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.Range;
 
-@TeleOp(name="Alternate Iterative Teleop", group="Practice Opmode")
-@Disabled
-public class Iterative_Teleop extends OpMode
+import org.firstinspires.ftc.robotcore.external.ClassFactory;
+import org.firstinspires.ftc.robotcore.external.navigation.RelicRecoveryVuMark;
+import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
+import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackable;
+import org.firstinspires.ftc.robotcore.external.navigation.VuforiaTrackables;
+
+
+@TeleOp(name="New Drive Teleop", group="Practice Opmode")
+public class Drive_Teleop extends OpMode
 {
     // Declare OpMode members.
     private ElapsedTime runtime = new ElapsedTime();
@@ -45,9 +51,35 @@ public class Iterative_Teleop extends OpMode
     private DcMotor rightDrive = null;
     private DcMotor clawMotor = null;
 
+    // Toggle direction
+    private boolean forward = true;
+
+    // Vuforia stuff
+    private VuforiaLocalizer vuforia;
+    private VuforiaTrackables relicTrackables;
+    private VuforiaTrackable relicTemplate;
+
+    private void initVuforia() {
+        int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+        VuforiaLocalizer.Parameters parameters = new VuforiaLocalizer.Parameters(cameraMonitorViewId);
+
+        parameters.vuforiaLicenseKey = "AbYJABr/////AAAAGZlNBbR1iULRqPgnEKN8rugaxEq7Wiqk7y8VS6WEH+FFCtSramQje2EJ9h+twE2FslQ6zkB/o9v1LfrOdNM7HmR+6uR2FcBoA3JnJKaJkhxsRN/sBQUvU3OEcGizbol1O2WS/nIO0TSFrFEnWcxN9o4HGcNj9M2z6nhEh78TkNYq+4zl3+mjreRe5xR+nnFpVCeY0qcG/4BqIYlTcSqTPYCY1BMy8tKDfD8te2M1Ur7qriIna4nGW5+kfE1/AJKbgmzmwNhESbuXf9m0AnfnJ60EWmXZSNJn9LexxBlBitHLXLTGdCctj6tINl3g135C8eoRspCoXYM8xk0u4vYPxFAGe1dbPY3MpUI1U33q6kjR";
+
+        parameters.cameraDirection = VuforiaLocalizer.CameraDirection.BACK;
+        this.vuforia = ClassFactory.createVuforiaLocalizer(parameters);
+
+        relicTrackables = this.vuforia.loadTrackablesFromAsset("RelicVuMark");
+        relicTemplate = relicTrackables.get(0);
+        relicTemplate.setName("relicVuMarkTemplate"); // can help in debugging; otherwise not necessary
+
+    }
+
     @Override
     public void init() { //Once, after init
         telemetry.addData("Status", "Init start.");
+
+        // Load up Vuforia
+        this.initVuforia();
 
         leftDrive  = hardwareMap.get(DcMotor.class, "leftDrive");
         rightDrive = hardwareMap.get(DcMotor.class, "rightDrive");
@@ -65,22 +97,53 @@ public class Iterative_Teleop extends OpMode
 
     @Override
     public void init_loop() { //Continuously, after init
-        telemetry.addData("Status","Init looping.");
+        telemetry.addData("1", "   -- Ruse Robotics --");
+        telemetry.addData("2", "Good Luck! Hope things don't break!");
+        telemetry.addData("4", "- Tank mode input, merged from both controllers");
+        telemetry.addData("5", "- Right trigger on 1 to override movement");
+        telemetry.addData("6", "- X to toggle direction");
     }
 
     @Override
     public void start() {
+        relicTrackables.activate(); // start tracking relics?
         runtime.reset();
     } //Once, after play
 
+
+    private boolean old_gamepad_x;
     @Override
     public void loop() { //Continuous, after play
+        // Vuforia ID ---
+        RelicRecoveryVuMark vuMark = RelicRecoveryVuMark.from(relicTemplate);
+        if (vuMark != RelicRecoveryVuMark.UNKNOWN) {
+            telemetry.addData("VuMark", "%s visible", vuMark);
+        }
 
-        // Drive Train ---
-        double leftInput = gamepad1.left_stick_y;
-        double rightInput = gamepad1.right_stick_y;
+        // Reverse Control --
+        boolean toggle_ctl = gamepad1.x || gamepad2.x;
+        if(toggle_ctl && !old_gamepad_x) {
+            forward = !forward;
+        }
+        old_gamepad_x = toggle_ctl;
+
+        // Drive Train --
+        double leftInput = 0;//Range.clip(gamepad1.left_stick_y + gamepad2.left_stick_y, -1, 1);
+        double rightInput = 0;//Range.clip(gamepad1.right_stick_y + gamepad2.right_stick_y, -1, 1);
+//        if(gamepad1.left_trigger > 0.3) {
+            leftInput = gamepad1.left_stick_y;
+            rightInput = gamepad1.right_stick_y;
+//            telemetry.addData("Override", "Gamepad1 overriding movement");
+//        }
+
+        if (!forward){ // Reverse controls
+            leftInput = -leftInput;
+            rightInput = -rightInput;
+        }
+
         leftDrive.setPower(leftInput);
         rightDrive.setPower(rightInput);
+        telemetry.addData("Input", "(%s) left (%.2f), right (%.2f)", forward ? "fwd" : "rev", leftInput, rightInput);
 
         // Claw ---
         if (gamepad1.left_bumper || gamepad2.left_bumper){
@@ -96,40 +159,10 @@ public class Iterative_Teleop extends OpMode
             telemetry.addData("Motors","Claw inactive.");
         }
 
-        // ReverseControl ---
-        boolean reverseControl = false;
-        if (gamepad1.left_stick_button){
-            reverseControl = true;
-        }
-        while(reverseControl) {
-            if (gamepad1.right_stick_button){
-                reverseControl = false;
-            }
-            leftInput = gamepad1.left_stick_y;
-            rightInput = gamepad1.right_stick_y;
-
-            leftDrive.setPower(-leftInput);
-            rightDrive.setPower(-rightInput);
-            if (gamepad1.left_bumper){
-                clawMotor.setPower(1);
-                telemetry.addData("Motors","Claw intake.");
-            }
-            else if (gamepad1.right_bumper){
-                clawMotor.setPower(-1);
-                telemetry.addData("Motors","Claw outtake.");
-            }
-            else{
-                clawMotor.setPower(0);
-                telemetry.addData("Motors","Claw inactive.");
-            }
-            telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftInput, rightInput);
-            telemetry.addData("reverseControl", "%s", reverseControl);
-            telemetry.update();
-        }
         // Show the elapsed game time and wheel power.
         telemetry.addData("Status", "Runtime: " + runtime.toString());
-        telemetry.addData("Input", "left (%.2f), right (%.2f)", leftInput, rightInput);
+
+        telemetry.update();
     }
 
     @Override
