@@ -32,6 +32,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
@@ -51,8 +52,12 @@ public class Drive_Teleop extends OpMode
     private DcMotor rightDrive = null;
     private DcMotor clawMotor = null;
 
+    private Servo servo = null;
+
     // Toggle direction
     private boolean forward = true;
+    private boolean slow = false;
+    private boolean tank = true;
 
     // Vuforia stuff
     private VuforiaLocalizer vuforia;
@@ -84,10 +89,12 @@ public class Drive_Teleop extends OpMode
         leftDrive  = hardwareMap.get(DcMotor.class, "leftDrive");
         rightDrive = hardwareMap.get(DcMotor.class, "rightDrive");
         clawMotor = hardwareMap.get(DcMotor.class, "clawMotor");
+        servo = hardwareMap.get(Servo.class, "");
 
         telemetry.addData("Debug", leftDrive);
         telemetry.addData("Debug", rightDrive);
         telemetry.addData("Debug", clawMotor);
+        telemetry.addData("Debug", servo);
 
         leftDrive.setDirection(DcMotor.Direction.REVERSE);
         rightDrive.setDirection(DcMotor.Direction.FORWARD);
@@ -102,6 +109,8 @@ public class Drive_Teleop extends OpMode
         telemetry.addData("4", "- Tank mode input, merged from both controllers");
         telemetry.addData("5", "- Right trigger on 1 to override movement");
         telemetry.addData("6", "- X to toggle direction");
+        telemetry.addData("7", "- Y to toggle slow mode");
+        telemetry.addData("8", "- A to change control scheme");
     }
 
     @Override
@@ -110,8 +119,10 @@ public class Drive_Teleop extends OpMode
         runtime.reset();
     } //Once, after play
 
+    private boolean old_toggle_dir;
+    private boolean old_toggle_slow;
+    private boolean old_toggle_ctl;
 
-    private boolean old_gamepad_x;
     @Override
     public void loop() { //Continuous, after play
         // Vuforia ID ---
@@ -120,44 +131,71 @@ public class Drive_Teleop extends OpMode
             telemetry.addData("VuMark", "%s visible", vuMark);
         }
 
-        // Reverse Control --
-        boolean toggle_ctl = gamepad1.x || gamepad2.x;
-        if(toggle_ctl && !old_gamepad_x) {
+        // Reverse Control Toggle --
+        boolean toggle_dir = gamepad1.x;
+        if (toggle_dir && !old_toggle_dir) { // rising edge
             forward = !forward;
         }
-        old_gamepad_x = toggle_ctl;
+        old_toggle_dir = toggle_dir;
+
+        // Slow mode toggle --
+        boolean toggle_slow = gamepad1.y;
+        if (toggle_slow && !old_toggle_slow) { // rising edge
+            slow = !slow;
+        }
+        old_toggle_slow = toggle_slow;
+
+        // Control mode toggle --
+        boolean toggle_ctl = gamepad1.a;
+        if (toggle_ctl && !old_toggle_ctl) { // rising edge
+            tank = !tank;
+        }
+        old_toggle_ctl = toggle_ctl;
 
         // Drive Train --
-        double leftInput = 0;//Range.clip(gamepad1.left_stick_y + gamepad2.left_stick_y, -1, 1);
-        double rightInput = 0;//Range.clip(gamepad1.right_stick_y + gamepad2.right_stick_y, -1, 1);
-//        if(gamepad1.left_trigger > 0.3) {
-            leftInput = gamepad1.left_stick_y;
-            rightInput = gamepad1.right_stick_y;
-//            telemetry.addData("Override", "Gamepad1 overriding movement");
-//        }
+        double leftInput = gamepad1.left_stick_y;
+        double rightInput = gamepad1.right_stick_y;
 
-        if (!forward){ // Reverse controls
-            leftInput = -leftInput;
-            rightInput = -rightInput;
+        if (!tank) {
+            double drive = -gamepad1.right_stick_y;
+            double turn  = -gamepad1.right_stick_x;
+            leftInput = Range.clip(drive + turn, -1.0, 1.0);
+            rightInput = Range.clip(drive - turn, -1.0, 1.0);
+            telemetry.addData("Arcade", "ARCADE CONTROLS ACTIVE -- A to disable");
         }
 
-        leftDrive.setPower(leftInput);
-        rightDrive.setPower(rightInput);
-        telemetry.addData("Input", "(%s) left (%.2f), right (%.2f)", forward ? "fwd" : "rev", leftInput, rightInput);
+        if (!forward){ // Reverse controls
+            double tmp = leftInput;
+            leftInput = -rightInput;
+            rightInput = -tmp;
+        }
+
+        // Better dynamic range
+        leftDrive.setPower(leftInput*leftInput*leftInput*leftInput*leftInput);
+        rightDrive.setPower(rightInput*rightInput*rightInput*rightInput*rightInput);
+
+        if (slow) {
+            leftDrive.setPower(leftInput*leftInput*leftInput / 6);
+            rightDrive.setPower(rightInput*rightInput*rightInput / 6);
+            telemetry.addData("Slow", "SLOW MODE ACTIVE -- Y to disable");
+        }
+
+        telemetry.addData("Input", "(%s) left (%.2f), right (%.2f)",
+                forward ? "fwd" : "rev", leftDrive.getPower(), rightDrive.getPower());
 
         // Claw ---
         if (gamepad1.left_bumper || gamepad2.left_bumper){
-            clawMotor.setPower(1.00);
-            telemetry.addData("Motors","Claw intake.");
+            double rot = servo.getPosition() + 0.2;
+            servo.setPosition(Range.clip(rot, 0, 1));
+            telemetry.addData("Servo","Servo Increase");
+        } else if (gamepad1.right_bumper || gamepad2.right_bumper){
+            double rot = servo.getPosition() - 0.2;
+            servo.setPosition(Range.clip(rot, 0, 1));
+            telemetry.addData("Servo","Servo Decrease");
         }
-        else if (gamepad1.right_bumper || gamepad2.right_bumper){
-            clawMotor.setPower(-1.00);
-            telemetry.addData("Motors","Claw outtake.");
-        }
-        else{
-            clawMotor.setPower(0);
-            telemetry.addData("Motors","Claw inactive.");
-        }
+
+        // TODO claw motor controls
+
 
         // Show the elapsed game time and wheel power.
         telemetry.addData("Status", "Runtime: " + runtime.toString());
